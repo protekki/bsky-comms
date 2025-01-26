@@ -17,7 +17,7 @@ print("Connected!\n")
 
 # iterate through follows
 follows = client.get_follows(actor=handle).follows
-print("Searching for \"comms\"/\"commissions\"...\n")
+print("Searching...\n")
 commsList = []
 for profile in follows:
     # check if profile name mentions comms
@@ -35,19 +35,28 @@ for profile in follows:
             continue
             # skip this profile so that it doesn't get any posts saying that comms are open
 
-    # reads the latest 10 posts to see if they mention commissions
-    profileFeed = client.get_author_feed(actor=profile.handle)
-    postIndex = 0
+    # reads the latest posts to see if they mention commissions
+    profileFeed = client.get_author_feed(actor=profile.handle,filter='posts_no_replies')
     fromPost = ""
+    postIndex = 0 # use an index instead of the limit field to not count reposts
     for feedView in profileFeed.feed:
         if postIndex >= readPosts:
             break
+        if feedView.post.author.handle != profile.handle:
+            continue
         if "comms" in feedView.post.record.text or "commissions" in feedView.post.record.text:
             if "closed" not in feedView.post.record.text:
                 commsOpen = True
                 if len(fromPost) > 0:
                     fromPost += "\n- - - - - - - -\n"
-                fromPost = feedView.post.record.created_at + "\n" + feedView.post.record.text
+
+                # get rkey from uri
+                rkeyIndex = feedView.post.uri.rfind("/")
+                rkey = feedView.post.uri[rkeyIndex + 1:]
+
+                fromPost = (feedView.post.record.created_at + "\n" +
+                            "https://bsky.app/profile/" + profile.handle + "/post/" + rkey + "\n" +
+                            feedView.post.record.text)
         postIndex += 1
 
     # if nothing has been found, go to the next profile
