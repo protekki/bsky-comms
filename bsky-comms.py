@@ -32,9 +32,8 @@ for profile in follows:
         if "closed" not in desc:
             commsOpen = True
         else:
-            commsOpen = False
-    if not commsOpen:
-        continue
+            continue
+            # skip this profile so that it doesn't get any posts saying that comms are open
 
     # reads the latest 10 posts to see if they mention commissions
     profileFeed = client.get_author_feed(actor=profile.handle)
@@ -46,18 +45,24 @@ for profile in follows:
         if "comms" in feedView.post.record.text or "commissions" in feedView.post.record.text:
             if "closed" not in feedView.post.record.text:
                 commsOpen = True
-                feedView.post.record.created_at
+                if len(fromPost) > 0:
+                    fromPost += "\n- - - - - - - -\n"
                 fromPost = feedView.post.record.created_at + "\n" + feedView.post.record.text
         postIndex += 1
 
+    # if nothing has been found, go to the next profile
+    if not commsOpen:
+        continue
+
+    # output the info
     print(profile.display_name + "\n@" +
           profile.handle + "\n" +
           "https://bsky.app/profile/" + profile.handle + "\n"
           "----------------\n" +
           profile.description)
+    # show the post that it found something in
     if len(fromPost) > 0:
-        print("----------------\n" +
-              fromPost)
+        print("----------------\n" + fromPost)
     print("\n================\n")
     commsList.append("https://bsky.app/profile/" + profile.handle)
 
