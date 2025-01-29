@@ -61,31 +61,32 @@ for profile in follows:
     # reads the latest posts to see if they mention commissions
     profileFeed = client.get_author_feed(actor=profile.handle,filter='posts_no_replies')
     commPosts = []
+    postDates = []
     postIndex = 0 # use an index instead of the limit field to not count reposts
     for feedView in profileFeed.feed:
         if postIndex >= readPosts:
             break
-        if feedView.post.author.handle != profile.handle: # ignore posts from other users (reposts)
+
+        post = feedView.post
+        if post.author.handle != profile.handle: # ignore posts from other users (reposts)
             continue
-        if feedView.post in commPosts: # ignore duplicate posts
+        if post.record.created_at in postDates: # ignore duplicate posts
             continue
         found = False
         for s in searchTerms:
-            if s in feedView.post.record.text.lower():
+            if s in post.record.text.lower():
                 found = True
         if found:
-            if "closed" not in feedView.post.record.text.lower():
+            if "closed" not in post.record.text.lower():
                 commsOpen = True
-                if len(commPosts) > 0:
-                    commPosts.append("- - - - - - - -")
 
                 # get rkey from uri
-                rkeyIndex = feedView.post.uri.rfind("/")
-                rkey = feedView.post.uri[rkeyIndex + 1:]
+                rkeyIndex = post.uri.rfind("/")
+                rkey = post.uri[rkeyIndex + 1:]
 
-                commPosts.append(feedView.post.record.created_at + "\n" +
-                            "https://bsky.app/profile/" + profile.handle + "/post/" + rkey + "\n" +
-                            feedView.post.record.text)
+                commPosts.append("https://bsky.app/profile/" + profile.handle + "/post/" + rkey + "\n" +
+                            post.record.text)
+                postDates.append(post.record.created_at)
         postIndex += 1
 
     # if nothing has been found, go to the next profile
@@ -102,8 +103,10 @@ for profile in follows:
     # show the post(s) that it found something in
     if len(commPosts) > 0:
         print("----------------")
-        for post in commPosts:
-            print(post)
+        for i in range(len(commPosts)):
+            print(postDates[i] + "\n" + commPosts[i])
+            if i + 1 < len(commPosts):
+                print("- - - - - - - -")
     print("\n================\n")
     commsList.append("https://bsky.app/profile/" + profile.handle)
 
