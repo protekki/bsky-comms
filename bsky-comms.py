@@ -4,6 +4,7 @@ from atproto_core.exceptions import AtProtocolError
 handle = 'handle'
 appPassword = 'password' # app password can be found at https://bsky.app/settings/app-passwords
 readPosts = 10 # the number of latest posts to read
+searchTerms = ["comms", "commissions", "slots"]
 
 # log in to bsky
 try:
@@ -25,15 +26,19 @@ for profile in follows:
     # check if profile description mentions comms
     desc = profile.description.lower()
     commsOpen = False
-    if "comms" in name or "commissions" in name:
-        if "closed" not in name:
+    skipProfile = False
+    for s in searchTerms:
+        if s in name:
             commsOpen = True
-    elif "comms" in desc or "commissions" in desc:
-        if "closed" not in desc:
-            commsOpen = True
-        else:
-            continue
-            # skip this profile so that it doesn't get any posts saying that comms are open
+        elif s in desc:
+            if "closed" not in desc:
+                commsOpen = True
+            else:
+                skipProfile = True # skip this profile so that it doesn't get any posts saying that comms are open
+                break
+
+    if skipProfile:
+        continue
 
     # reads the latest posts to see if they mention commissions
     profileFeed = client.get_author_feed(actor=profile.handle,filter='posts_no_replies')
@@ -44,7 +49,11 @@ for profile in follows:
             break
         if feedView.post.author.handle != profile.handle:
             continue
-        if "comms" in feedView.post.record.text or "commissions" in feedView.post.record.text:
+        found = False
+        for s in searchTerms:
+            if s in feedView.post.record.text:
+                found = True
+        if found:
             if "closed" not in feedView.post.record.text:
                 commsOpen = True
                 if len(fromPost) > 0:
