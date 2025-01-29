@@ -81,7 +81,7 @@ for profile in follows:
                 rkeyIndex = feedView.post.uri.rfind("/")
                 rkey = feedView.post.uri[rkeyIndex + 1:]
 
-                fromPost = (feedView.post.record.created_at + "\n" +
+                fromPost += (feedView.post.record.created_at + "\n" +
                             "https://bsky.app/profile/" + profile.handle + "/post/" + rkey + "\n" +
                             feedView.post.record.text)
         postIndex += 1
