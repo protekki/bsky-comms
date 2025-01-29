@@ -21,9 +21,9 @@ cursor = None
 follows = []
 while True:
     fetched = client.get_follows(actor=handle,cursor=cursor,limit=100)
+    follows = follows + fetched.follows
     if not fetched.cursor:
         break
-    follows = follows + fetched.follows
     cursor = fetched.cursor
 
 print("Searching...\n")
