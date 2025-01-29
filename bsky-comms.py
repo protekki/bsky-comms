@@ -16,22 +16,40 @@ except AtProtocolError:
 
 print("Connected!\n")
 
-# iterate through follows
-follows = client.get_follows(actor=handle).follows
+# get all follows using cursor
+cursor = None
+follows = []
+while True:
+    fetched = client.get_follows(actor=handle,cursor=cursor,limit=100)
+    if not fetched.cursor:
+        break
+    follows = follows + fetched.follows
+    cursor = fetched.cursor
+
 print("Searching...\n")
 commsList = []
 for profile in follows:
-    # check if profile name mentions comms
-    name = profile.display_name.lower()
-    # check if profile description mentions comms
-    desc = profile.description.lower()
+    if profile is None:
+        continue
+
+    # use handle if display name is empty
+    if profile.display_name is None or len(profile.display_name) == 0:
+        name = profile.handle
+    else:
+        name = profile.display_name
+
+    # get description
+    desc = ""
+    if profile.description is not None and len(profile.description) > 0:
+        desc = profile.description
+
     commsOpen = False
     skipProfile = False
     for s in searchTerms:
-        if s in name:
+        if s in name.lower():
             commsOpen = True
-        elif s in desc:
-            if "closed" not in desc:
+        elif s in desc.lower():
+            if "closed" not in desc.lower():
                 commsOpen = True
             else:
                 skipProfile = True # skip this profile so that it doesn't get any posts saying that comms are open
@@ -51,10 +69,10 @@ for profile in follows:
             continue
         found = False
         for s in searchTerms:
-            if s in feedView.post.record.text:
+            if s in feedView.post.record.text.lower():
                 found = True
         if found:
-            if "closed" not in feedView.post.record.text:
+            if "closed" not in feedView.post.record.text.lower():
                 commsOpen = True
                 if len(fromPost) > 0:
                     fromPost += "\n- - - - - - - -\n"
@@ -73,11 +91,11 @@ for profile in follows:
         continue
 
     # output the info
-    print(profile.display_name + "\n@" +
+    print(name + "\n@" +
           profile.handle + "\n" +
           "https://bsky.app/profile/" + profile.handle + "\n"
           "----------------\n" +
-          profile.description)
+          desc)
     # show the post that it found something in
     if len(fromPost) > 0:
         print("----------------\n" + fromPost)
