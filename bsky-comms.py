@@ -60,12 +60,14 @@ for profile in follows:
 
     # reads the latest posts to see if they mention commissions
     profileFeed = client.get_author_feed(actor=profile.handle,filter='posts_no_replies')
-    fromPost = ""
+    commPosts = []
     postIndex = 0 # use an index instead of the limit field to not count reposts
     for feedView in profileFeed.feed:
         if postIndex >= readPosts:
             break
-        if feedView.post.author.handle != profile.handle:
+        if feedView.post.author.handle != profile.handle: # ignore posts from other users (reposts)
+            continue
+        if feedView.post in commPosts: # ignore duplicate posts
             continue
         found = False
         for s in searchTerms:
@@ -74,14 +76,14 @@ for profile in follows:
         if found:
             if "closed" not in feedView.post.record.text.lower():
                 commsOpen = True
-                if len(fromPost) > 0:
-                    fromPost += "\n- - - - - - - -\n"
+                if len(commPosts) > 0:
+                    commPosts.append("- - - - - - - -")
 
                 # get rkey from uri
                 rkeyIndex = feedView.post.uri.rfind("/")
                 rkey = feedView.post.uri[rkeyIndex + 1:]
 
-                fromPost += (feedView.post.record.created_at + "\n" +
+                commPosts.append(feedView.post.record.created_at + "\n" +
                             "https://bsky.app/profile/" + profile.handle + "/post/" + rkey + "\n" +
                             feedView.post.record.text)
         postIndex += 1
@@ -93,12 +95,15 @@ for profile in follows:
     # output the info
     print(name + "\n@" +
           profile.handle + "\n" +
-          "https://bsky.app/profile/" + profile.handle + "\n"
-          "----------------\n" +
-          desc)
-    # show the post that it found something in
-    if len(fromPost) > 0:
-        print("----------------\n" + fromPost)
+          "https://bsky.app/profile/" + profile.handle)
+    # output the description
+    if len(desc) > 0:
+        print("----------------\n" + desc)
+    # show the post(s) that it found something in
+    if len(commPosts) > 0:
+        print("----------------")
+        for post in commPosts:
+            print(post)
     print("\n================\n")
     commsList.append("https://bsky.app/profile/" + profile.handle)
 
