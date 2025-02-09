@@ -4,7 +4,7 @@ from atproto_core.exceptions import AtProtocolError
 handle = 'handle'
 appPassword = 'password' # app password can be found at https://bsky.app/settings/app-passwords
 readPosts = 10 # the number of latest posts to read
-searchTerms = ["comms", "commissions", "slots"]
+searchTerms = ["comms", "commission", "slots", "ych"]
 
 # log in to bsky
 try:
@@ -47,7 +47,8 @@ for profile in follows:
     skipProfile = False
     for s in searchTerms:
         if s in name.lower():
-            commsOpen = True
+            if "closed" not in name.lower():
+                commsOpen = True
         elif s in desc.lower():
             if "closed" not in desc.lower():
                 commsOpen = True
