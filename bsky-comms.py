@@ -1,15 +1,28 @@
+# your user handle used to log in to bsky
+myHandle = 'handle'
+# your app password - can be found at https://bsky.app/settings/app-passwords
+appPassword = 'password'
+# what terms to search for in posts and descriptions
+searchTerms = ["comms", "commission", "slots", "ych"]
+# the number of latest posts to read
+readPosts = 10
+# the max number of days to search back through. < 0 means no time limit
+searchDays = 10
+# handles included here will be excluded from the results
+excludeHandles = []
+
+# ================================
+
 from atproto import Client
 from atproto_core.exceptions import AtProtocolError
-
-handle = 'handle'
-appPassword = 'password' # app password can be found at https://bsky.app/settings/app-passwords
-readPosts = 10 # the number of latest posts to read
-searchTerms = ["comms", "commission", "slots", "ych"]
+from atproto_client.models.app.bsky.feed.defs import ReasonRepost
+from atproto_client.exceptions import BadRequestError
+from datetime import datetime
 
 # log in to bsky
 try:
     client = Client()
-    client.login(handle, appPassword)
+    client.login(myHandle, appPassword)
 except AtProtocolError:
     print("Error connecting to bsky. Did you add your handle and app password?")
     exit(1)
@@ -20,7 +33,7 @@ print("Connected!\n")
 cursor = None
 follows = []
 while True:
-    fetched = client.get_follows(actor=handle,cursor=cursor,limit=100)
+    fetched = client.get_follows(actor=myHandle, cursor=cursor, limit=100)
     follows = follows + fetched.follows
     if not fetched.cursor:
         break
@@ -30,6 +43,16 @@ print("Searching...\n")
 commsList = []
 for profile in follows:
     if profile is None:
+        continue
+
+    # use did if handle is invalid
+    if profile.handle == "handle.invalid":
+        profileHandle = profile.did
+    else:
+        profileHandle = profile.handle
+
+    # skip excluded handles
+    if profile.handle in excludeHandles:
         continue
 
     # use handle if display name is empty
@@ -60,7 +83,12 @@ for profile in follows:
         continue
 
     # reads the latest posts to see if they mention commissions
-    profileFeed = client.get_author_feed(actor=profile.handle,filter='posts_no_replies')
+    try:
+        profileFeed = client.get_author_feed(actor=profileHandle,filter='posts_no_replies')
+    except BadRequestError:
+        print("Error fetching feed of user: " + profileHandle)
+        continue
+
     commPosts = []
     postDates = []
     postIndex = 0 # use an index instead of the limit field to not count reposts
@@ -69,7 +97,31 @@ for profile in follows:
             break
 
         post = feedView.post
-        if post.author.handle != profile.handle: # ignore posts from other users (reposts)
+        if feedView.reason != ReasonRepost: # don't check the date for reposts
+            if searchDays >= 0:
+                # get the timestamp - [year]-[month]-[date]T[hour]-[minute]-[second].[microseconds][TZ]
+                # TZ can be 'Z' or '±HH:MM'. microseconds are optional
+                timestr = post.record.created_at
+                if timestr.find('Z') != -1:
+                    try:
+                        parseFormat = '%Y-%m-%dT%H:%M:%SZ'
+                        timestamp = datetime.strptime(timestr, parseFormat)
+                    except ValueError:
+                        parseFormat = '%Y-%m-%dT%H:%M:%S.%fZ'
+                        timestamp = datetime.strptime(timestr, parseFormat)
+                else:
+                    try:
+                        parseFormat = '%Y-%m-%dT%H:%M:%S%z'
+                        timestamp = datetime.strptime(timestr, parseFormat)
+                    except ValueError:
+                        parseFormat = '%Y-%m-%dT%H:%M:%S.%f%z'
+                        timestamp = datetime.strptime(timestr, parseFormat)
+                # convert the post timestamp to the local timezone
+                localisedTimestamp = timestamp.astimezone(datetime.now().tzinfo).replace(tzinfo=datetime.now().tzinfo)
+                diff = datetime.now() - localisedTimestamp
+                if diff.days > searchDays: # ignore posts older than searchDays
+                    break
+        if post.author.handle != profileHandle: # ignore posts from other users (reposts)
             continue
         if post.record.created_at in postDates: # ignore duplicate posts
             continue
@@ -82,10 +134,9 @@ for profile in follows:
                 commsOpen = True
 
                 # get rkey from uri
-                rkeyIndex = post.uri.rfind("/")
-                rkey = post.uri[rkeyIndex + 1:]
+                rkey = post.uri[post.uri.rfind("/") + 1:]
 
-                commPosts.append("https://bsky.app/profile/" + profile.handle + "/post/" + rkey + "\n" +
+                commPosts.append("https://bsky.app/profile/" + profileHandle + "/post/" + rkey + "\n" +
                             post.record.text)
                 postDates.append(post.record.created_at)
         postIndex += 1
@@ -96,8 +147,8 @@ for profile in follows:
 
     # output the info
     print(name + "\n@" +
-          profile.handle + "\n" +
-          "https://bsky.app/profile/" + profile.handle)
+          profileHandle + "\n" +
+          "https://bsky.app/profile/" + profileHandle)
     # output the description
     if len(desc) > 0:
         print("----------------\n" + desc)
@@ -109,7 +160,7 @@ for profile in follows:
             if i + 1 < len(commPosts):
                 print("- - - - - - - -")
     print("\n================\n")
-    commsList.append("https://bsky.app/profile/" + profile.handle)
+    commsList.append("https://bsky.app/profile/" + profileHandle)
 
 print("Finished!\nFound:\n")
 for profile in commsList:
