@@ -1,3 +1,5 @@
+# Check for the latest version at https://github.com/protekki/bsky-comms
+
 # your user handle used to log in to bsky
 myHandle = 'handle'
 # your app password - can be found at https://bsky.app/settings/app-passwords
@@ -10,6 +12,9 @@ readPosts = 10
 searchDays = 10
 # handles included here will be excluded from the results
 excludeHandles = []
+# file to write to. blank name = date
+createFile = False
+outFileName = ""
 
 # ================================
 
@@ -40,6 +45,17 @@ while True:
     cursor = fetched.cursor
 
 print("Searching...\n")
+
+# load file if the option is set
+outFile = None
+if createFile:
+    if outFileName and not outFileName.isspace():
+        outFile = open(outFileName, 'x')
+    else:
+        autoName = datetime.today().strftime("bsky-comms_%Y-%m-%d_%H-%M-%S")
+        outFile = open(autoName, 'x')
+    print("Found: 0", end="")
+
 commsList = []
 for profile in follows:
     if profile is None:
@@ -84,9 +100,12 @@ for profile in follows:
 
     # reads the latest posts to see if they mention commissions
     try:
-        profileFeed = client.get_author_feed(actor=profileHandle,filter='posts_no_replies')
+        profileFeed = client.get_author_feed(actor=profileHandle, filter='posts_no_replies')
     except BadRequestError:
-        print("Error fetching feed of user: " + profileHandle)
+        if outFile:
+            outFile.write("Error fetching feed of user: " + profileHandle)
+        else:
+            print("Error fetching feed of user: " + profileHandle)
         continue
 
     commPosts = []
@@ -146,22 +165,42 @@ for profile in follows:
         continue
 
     # output the info
-    print(name + "\n@" +
-          profileHandle + "\n" +
-          "https://bsky.app/profile/" + profileHandle)
-    # output the description
-    if len(desc) > 0:
-        print("----------------\n" + desc)
-    # show the post(s) that it found something in
-    if len(commPosts) > 0:
-        print("----------------")
-        for i in range(len(commPosts)):
-            print(postDates[i] + "\n" + commPosts[i])
-            if i + 1 < len(commPosts):
-                print("- - - - - - - -")
-    print("\n================\n")
+    if outFile:
+        outFile.write(name + "\n@" +
+              profileHandle + "\n" +
+              "https://bsky.app/profile/" + profileHandle)
+        # output the description
+        if len(desc) > 0:
+            outFile.write("----------------\n" + desc)
+        # show the post(s) that it found something in
+        if len(commPosts) > 0:
+            outFile.write("----------------")
+            for i in range(len(commPosts)):
+                outFile.write(postDates[i] + "\n" + commPosts[i])
+                if i + 1 < len(commPosts):
+                    outFile.write("- - - - - - - -")
+        outFile.write("\n================\n")
+        print("\rFound: " + str(len(commsList) + 1), end="")
+    else:
+        print("\n" + name + "\n@" +
+              profileHandle + "\n" +
+              "https://bsky.app/profile/" + profileHandle)
+        # output the description
+        if len(desc) > 0:
+            print("----------------\n" + desc)
+        # show the post(s) that it found something in
+        if len(commPosts) > 0:
+            print("----------------")
+            for i in range(len(commPosts)):
+                print(postDates[i] + "\n" + commPosts[i])
+                if i + 1 < len(commPosts):
+                    print("- - - - - - - -")
+        print("\n================")
+
     commsList.append("https://bsky.app/profile/" + profileHandle)
 
-print("Finished!\nFound:\n")
-for profile in commsList:
-    print(profile)
+print("\nFinished!")
+if not createFile:
+    print("Found:")
+    for profile in commsList:
+        print(profile)
