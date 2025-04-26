@@ -5,7 +5,7 @@ myHandle = 'handle'
 # your app password - can be found at https://bsky.app/settings/app-passwords
 appPassword = 'password'
 # what terms to search for in posts and descriptions
-searchTerms = ["comms", "commission", "slots", "ych"]
+searchTerms = ["comms", "commission", "slots", "ych "]
 # the number of latest posts to read
 readPosts = 10
 # the max number of days to search back through. < 0 means no time limit
@@ -103,7 +103,7 @@ for profile in follows:
         profileFeed = client.get_author_feed(actor=profileHandle, filter='posts_no_replies')
     except BadRequestError:
         if outFile:
-            outFile.write("Error fetching feed of user: " + profileHandle)
+            outFile.write("\nError fetching feed of user: " + profileHandle + "\n")
         else:
             print("Error fetching feed of user: " + profileHandle)
         continue
@@ -167,19 +167,19 @@ for profile in follows:
     # output the info
     if outFile:
         outFile.write(name + "\n@" +
-              profileHandle + "\n" +
+              profileHandle + "\n"
               "https://bsky.app/profile/" + profileHandle)
         # output the description
         if len(desc) > 0:
-            outFile.write("----------------\n" + desc)
+            outFile.write("\n----------------\n" + desc)
         # show the post(s) that it found something in
         if len(commPosts) > 0:
-            outFile.write("----------------")
+            outFile.write("\n----------------\n")
             for i in range(len(commPosts)):
                 outFile.write(postDates[i] + "\n" + commPosts[i])
                 if i + 1 < len(commPosts):
-                    outFile.write("- - - - - - - -")
-        outFile.write("\n================\n")
+                    outFile.write("\n- - - - - - - -\n")
+        outFile.write("\n\n================\n\n")
         print("\rFound: " + str(len(commsList) + 1), end="")
     else:
         print("\n" + name + "\n@" +
