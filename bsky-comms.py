@@ -101,11 +101,11 @@ for profile in follows:
     # reads the latest posts to see if they mention commissions
     try:
         profileFeed = client.get_author_feed(actor=profileHandle, filter='posts_no_replies')
-    except BadRequestError:
+    except Exception as ex:
         if outFile:
-            outFile.write("\nError fetching feed of user: " + profileHandle + "\n")
+            outFile.write("\nError fetching feed of user: " + profileHandle + ": " + ex + "\n")
         else:
-            print("Error fetching feed of user: " + profileHandle)
+            print("Error fetching feed of user: " + profileHandle + ": " + ex)
         continue
 
     commPosts = []
@@ -121,7 +121,33 @@ for profile in follows:
                 # get the timestamp - [year]-[month]-[date]T[hour]-[minute]-[second].[microseconds][TZ]
                 # TZ can be 'Z' or '±HH:MM'. microseconds are optional
                 timestr = post.record.created_at
-                if timestr.find('Z') != -1:
+                if 'Z' in timestr:
+                    useZ = True
+                else:
+                    useZ = False
+
+                # %f can only take 6 chars so truncate microseconds
+                if '.' in timestr:
+                    # split timestr up to date, time, timezone
+                    if not useZ:
+                        date, time_zone = timestr.split('+')
+                    else:
+                        date = timestr
+
+                    date_time, microsecs = date.split('.')
+
+                    if len(microsecs) > 6:
+                        microsecs = microsecs[:6]
+                        if useZ:
+                            microsecs += 'Z'
+
+                    if useZ:
+                        timestr = f"{date_time}.{microsecs}"
+                    else:
+                        timestr = f"{date_time}.{microsecs}+{time_zone}"
+
+                # use different formats depending on timezone and if using microseconds
+                if useZ:
                     try:
                         parseFormat = '%Y-%m-%dT%H:%M:%SZ'
                         timestamp = datetime.strptime(timestr, parseFormat)
@@ -135,6 +161,7 @@ for profile in follows:
                     except ValueError:
                         parseFormat = '%Y-%m-%dT%H:%M:%S.%f%z'
                         timestamp = datetime.strptime(timestr, parseFormat)
+
                 # convert the post timestamp to the local timezone
                 localisedTimestamp = timestamp.astimezone(datetime.now().tzinfo).replace(tzinfo=datetime.now().tzinfo)
                 diff = datetime.now() - localisedTimestamp
