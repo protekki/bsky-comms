@@ -12,9 +12,14 @@ readPosts = 10
 searchDays = 10
 # handles included here will be excluded from the results
 excludeHandles = []
-# file to write to. blank name = date
+# file to write to. blank name = bsky-comms-
+# file name (incl. date) settings are overwritten if argument is passed for name
 createFile = False
 outFileName = ""
+# append the current date and time to the file name
+dateName = True
+# show embed count or ignore (image, video, etc) 
+showImageCount = True
 
 # ================================
 
@@ -22,7 +27,9 @@ from atproto import Client
 from atproto_core.exceptions import AtProtocolError
 from atproto_client.models.app.bsky.feed.defs import ReasonRepost
 from atproto_client.exceptions import BadRequestError
+from atproto_client import models
 from datetime import datetime
+from sys import argv
 
 # log in to bsky
 try:
@@ -49,7 +56,16 @@ print("Searching...\n")
 # load file if the option is set
 outFile = None
 if createFile:
-    if outFileName and not outFileName.isspace():
+    args = argv[1:]
+    if len(argv) > 1:
+        outFileName = argv[1]
+        if outFileName and not outFileName.isspace():
+            print("Writing to file: " + outFileName)
+            outFile = open(outFileName, 'x')
+            customname = True
+    if not customname and outFileName and not outFileName.isspace():
+        if dateName:
+            outFileName = datetime.today().strftime(outFileName + "_%Y-%m-%d_%H-%M-%S")
         outFile = open(outFileName, 'x')
     else:
         autoName = datetime.today().strftime("bsky-comms_%Y-%m-%d_%H-%M-%S")
@@ -88,9 +104,11 @@ for profile in follows:
         if s in name.lower():
             if "closed" not in name.lower():
                 commsOpen = True
+                break
         elif s in desc.lower():
             if "closed" not in desc.lower():
                 commsOpen = True
+                break
             else:
                 skipProfile = True # skip this profile so that it doesn't get any posts saying that comms are open
                 break
@@ -175,6 +193,7 @@ for profile in follows:
         for s in searchTerms:
             if s in post.record.text.lower():
                 found = True
+                break
         if found:
             if "closed" not in post.record.text.lower():
                 commsOpen = True
@@ -182,8 +201,23 @@ for profile in follows:
                 # get rkey from uri
                 rkey = post.uri[post.uri.rfind("/") + 1:]
 
+                postContents = post.record.text
+
+                # show embeds
+                if showImageCount:
+                    if post.embed != None:
+                        postContents += "\n\nEmbed: "
+                        if isinstance(post.embed, models.app.bsky.embed.images.View):
+                            postContents += str(len(post.embed.images)) + " images"
+                        elif isinstance(post.embed, models.app.bsky.embed.video.View):
+                            postContents += "Video"
+                        elif isinstance(post.embed, models.app.bsky.embed.external.View):
+                            postContents += "External link"
+                        elif isinstance(post.embed, models.app.bsky.embed.record.View) or isinstance(post.embed, models.app.bsky.embed.record_with_media.View):
+                            postContents += "Record"
+
                 commPosts.append("https://bsky.app/profile/" + profileHandle + "/post/" + rkey + "\n" +
-                            post.record.text)
+                            postContents)
                 postDates.append(post.record.created_at)
         postIndex += 1
 
