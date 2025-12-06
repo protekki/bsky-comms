@@ -12,7 +12,7 @@ readPosts = 10
 searchDays = 10
 # handles included here will be excluded from the results
 excludeHandles = []
-# file to write to. blank name = bsky-comms-
+# file to write to. blank name = bsky-comms
 # file name (incl. date) settings are overwritten if argument is passed for name
 createFile = False
 outFileName = ""
