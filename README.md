@@ -13,4 +13,4 @@ The variables at the top of the file are options, edit them if desired.
 If you want to output to a file instead of the console, set `createFile` to `True`. File name defaults to "bsky-comms_[date]". For a custom name, edit `outFileName` or pass a file name via argument (`python3 bsky-comms.py filename`)
 
 # Compatibility
-This has only been tested on Linux, but it should work on other platforms.
+This has only been tested on Linux, but it should work on other platforms that support `atproto`.
