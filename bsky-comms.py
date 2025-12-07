@@ -109,21 +109,15 @@ for profile in follows:
     commsOpen = False
     skipProfile = False
     for n in negativeTerms:
-        if n in name.lower():
+        if n in name.lower() or n in desc.lower():
             # skip this profile so that it doesn't get any posts saying that comms are open
-            skipProfile = True
-            break
-        if n in desc.lower():
             skipProfile = True
             break
     if skipProfile:
         continue
 
     for s in searchTerms:
-        if s in name.lower():
-            commsOpen = True
-            break
-        elif s in desc.lower():
+        if s in name.lower() or s in desc.lower():
             commsOpen = True
             break
 
