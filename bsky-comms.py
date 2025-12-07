@@ -4,20 +4,27 @@
 myHandle = 'handle'
 # your app password - can be found at https://bsky.app/settings/app-passwords
 appPassword = 'password'
-# what terms to search for in posts and descriptions
-searchTerms = ["comms", "commission", "slots", "ych "]
+
+# what terms to search for in names/descriptions/posts (lower case)
+searchTerms = ["comms", "commission", "slots", "ych ", "vgen.", "gumroad"]
+# what terms will cause the user/post to be skipped
+negativeTerms = ["close"]
+
 # the number of latest posts to read
 readPosts = 10
 # the max number of days to search back through. < 0 means no time limit
 searchDays = 10
+
 # handles included here will be excluded from the results
 excludeHandles = []
+
 # file to write to. blank name = bsky-comms
 # file name (incl. date) settings are overwritten if argument is passed for name
 createFile = False
 outFileName = ""
 # append the current date and time to the file name
 dateName = True
+
 # show embed count or ignore (image, video, etc) 
 showImageCount = True
 
@@ -57,6 +64,7 @@ print("Searching...\n")
 outFile = None
 if createFile:
     args = argv[1:]
+    customname = False
     if len(argv) > 1:
         outFileName = argv[1]
         if outFileName and not outFileName.isspace():
@@ -100,21 +108,24 @@ for profile in follows:
 
     commsOpen = False
     skipProfile = False
-    for s in searchTerms:
-        if s in name.lower():
-            if "closed" not in name.lower():
-                commsOpen = True
-                break
-        elif s in desc.lower():
-            if "closed" not in desc.lower():
-                commsOpen = True
-                break
-            else:
-                skipProfile = True # skip this profile so that it doesn't get any posts saying that comms are open
-                break
-
+    for n in negativeTerms:
+        if n in name.lower():
+            # skip this profile so that it doesn't get any posts saying that comms are open
+            skipProfile = True
+            break
+        if n in desc.lower():
+            skipProfile = True
+            break
     if skipProfile:
         continue
+
+    for s in searchTerms:
+        if s in name.lower():
+            commsOpen = True
+            break
+        elif s in desc.lower():
+            commsOpen = True
+            break
 
     # reads the latest posts to see if they mention commissions
     try:
@@ -128,7 +139,7 @@ for profile in follows:
 
     commPosts = []
     postDates = []
-    postIndex = 0 # use an index instead of the limit field to not count reposts
+    postIndex = 0 # use an index instead of searchDays to not count reposts
     for feedView in profileFeed.feed:
         if postIndex >= readPosts:
             break
@@ -195,30 +206,33 @@ for profile in follows:
                 found = True
                 break
         if found:
-            if "closed" not in post.record.text.lower():
-                commsOpen = True
+            negativeFound = False
+            for n in negativeTerms:
+                if n in post.record.text.lower():
+                    negativeFound = True
+            if not negativeFound:
+                    # get rkey from uri
+                    rkey = post.uri[post.uri.rfind("/") + 1:]
 
-                # get rkey from uri
-                rkey = post.uri[post.uri.rfind("/") + 1:]
+                    postContents = post.record.text
 
-                postContents = post.record.text
+                    # show embeds
+                    if showImageCount:
+                        if post.embed != None:
+                            postContents += "\n[Embed: "
+                            if isinstance(post.embed, models.app.bsky.embed.images.View):
+                                postContents += str(len(post.embed.images)) + " images"
+                            elif isinstance(post.embed, models.app.bsky.embed.video.View):
+                                postContents += "Video"
+                            elif isinstance(post.embed, models.app.bsky.embed.external.View):
+                                postContents += "External link"
+                            elif isinstance(post.embed, models.app.bsky.embed.record.View) or isinstance(post.embed, models.app.bsky.embed.record_with_media.View):
+                                postContents += "Record"
+                            postContents += "]"
 
-                # show embeds
-                if showImageCount:
-                    if post.embed != None:
-                        postContents += "\n\nEmbed: "
-                        if isinstance(post.embed, models.app.bsky.embed.images.View):
-                            postContents += str(len(post.embed.images)) + " images"
-                        elif isinstance(post.embed, models.app.bsky.embed.video.View):
-                            postContents += "Video"
-                        elif isinstance(post.embed, models.app.bsky.embed.external.View):
-                            postContents += "External link"
-                        elif isinstance(post.embed, models.app.bsky.embed.record.View) or isinstance(post.embed, models.app.bsky.embed.record_with_media.View):
-                            postContents += "Record"
-
-                commPosts.append("https://bsky.app/profile/" + profileHandle + "/post/" + rkey + "\n" +
-                            postContents)
-                postDates.append(post.record.created_at)
+                    commPosts.append("https://bsky.app/profile/" + profileHandle + "/post/" + rkey + "\n" +
+                                postContents)
+                    postDates.append(post.record.created_at)
         postIndex += 1
 
     # if nothing has been found, go to the next profile
