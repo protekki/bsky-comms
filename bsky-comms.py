@@ -126,9 +126,9 @@ for profile in follows:
         profileFeed = client.get_author_feed(actor=profileHandle, filter='posts_no_replies')
     except Exception as ex:
         if outFile:
-            outFile.write("\nError fetching feed of user: " + profileHandle + ": " + ex + "\n")
+            outFile.write("\nError fetching feed of user: " + profileHandle + ": ", ex, "\n")
         else:
-            print("Error fetching feed of user: " + profileHandle + ": " + ex)
+            print("Error fetching feed of user: " + profileHandle + ": ", ex)
         continue
 
     commPosts = []
@@ -144,30 +144,38 @@ for profile in follows:
                 # get the timestamp - [year]-[month]-[date]T[hour]-[minute]-[second].[microseconds][TZ]
                 # TZ can be 'Z' or '±HH:MM'. microseconds are optional
                 timestr = post.record.created_at
-                if 'Z' in timestr:
-                    useZ = True
-                else:
-                    useZ = False
-
-                # %f can only take 6 chars so truncate microseconds
-                if '.' in timestr:
-                    # split timestr up to date, time, timezone
-                    if not useZ:
-                        date, time_zone = timestr.split('+')
+                try:
+                    if 'Z' in timestr:
+                        useZ = True
                     else:
-                        date = timestr
+                        useZ = False
 
-                    date_time, microsecs = date.split('.')
-
-                    if len(microsecs) > 6:
-                        microsecs = microsecs[:6]
+                    # %f can only take 6 chars so truncate microseconds
+                    if '.' in timestr:
+                        # split timestr up to date, time, timezone
                         if useZ:
-                            microsecs += 'Z'
+                            date = timestr
+                        else:
+                            if '+' in timestr:
+                                date, time_zone = timestr.split('+')
+                            else:
+                                date, time_zone = timestr.rsplit('-', 1)
 
-                    if useZ:
-                        timestr = f"{date_time}.{microsecs}"
-                    else:
-                        timestr = f"{date_time}.{microsecs}+{time_zone}"
+                        date_time, microsecs = date.split('.')
+
+                        if len(microsecs) > 6:
+                            microsecs = microsecs[:6]
+                            if useZ:
+                                microsecs += 'Z'
+
+                        if useZ:
+                            timestr = f"{date_time}.{microsecs}"
+                        else:
+                            timestr = f"{date_time}.{microsecs}+{time_zone}"
+                except:
+                    # Failed to get timezone, skip post
+                    postIndex += 1
+                    continue
 
                 # use different formats depending on timezone and if using microseconds
                 if useZ:
