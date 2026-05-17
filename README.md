@@ -11,6 +11,7 @@
 The variables at the top of the file are options, edit them if desired.
 
 - `searchTerms`: list of strings to search for. Must be in lower case, otherwise they will fail to match (posts are converted to lower case in case they are upper or mixed case)
+- `searchRegex`: Boolean. If enabled, each item in `searchTerms` will be treated as a regular expression instead of a fixed string
 - `negativeTerms`: list of strings that we don't want. When found in a display mame or bio, the profile is skipped. When found in a post in combination with a search term, the post is skipped. E.g. if one search term is 'comm' and a negative term is 'closed', then a post including 'comms closed' would be a match.
 - `readPosts`: Integer. Number of posts to read searching for `searchTerms`.
 - `searchDays`: Integer. When finding a post older than this number of days ago, stop reading posts.
