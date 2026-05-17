@@ -9,6 +9,7 @@ appPassword = 'password'
 searchTerms = ["comms", "commission", "slots", "ych ", "vgen.", "gumroad"]
 # what terms will cause the user/post to be skipped
 negativeTerms = ["close"]
+searchRegex = False
 
 # the number of latest posts to read
 readPosts = 10
@@ -37,6 +38,8 @@ from atproto_client.exceptions import BadRequestError
 from atproto_client import models
 from datetime import datetime
 from sys import argv
+if searchRegex:
+    import re
 
 # log in to bsky
 try:
@@ -117,18 +120,24 @@ for profile in follows:
         continue
 
     for s in searchTerms:
-        if s in name.lower() or s in desc.lower():
-            commsOpen = True
-            break
+        if searchRegex:
+            if re.search(s, name.lower()) or re.search(s, desc.lower()):
+                commsOpen = True
+                break
+        else:
+            if s in name.lower() or s in desc.lower():
+                commsOpen = True
+                break
 
     # reads the latest posts to see if they mention commissions
     try:
         profileFeed = client.get_author_feed(actor=profileHandle, filter='posts_no_replies')
     except Exception as ex:
         if outFile:
-            outFile.write("\nError fetching feed of user: " + profileHandle + ": ", ex, "\n")
+            print(f"\rError fetching feed of user: {profileHandle}: {ex}")
+            outFile.write(f"\nError fetching feed of user: {profileHandle}: {ex}\n")
         else:
-            print("Error fetching feed of user: " + profileHandle + ": ", ex)
+            print(f"Error fetching feed of user: {profileHandle}: {ex}")
         continue
 
     commPosts = []
@@ -204,9 +213,14 @@ for profile in follows:
             continue
         found = False
         for s in searchTerms:
-            if s in post.record.text.lower():
-                found = True
-                break
+            if searchRegex:
+                if re.search(s, post.record.text.lower()):
+                    found = True
+                    break
+            else:
+                if s in post.record.text.lower():
+                    found = True
+                    break
         if found:
             negativeFound = False
             for n in negativeTerms:
