@@ -1,3 +1,5 @@
+# Moved to https://git.gay/tekino/bsky-comms
+
 # Requirements
 - Python 3.8 or later
 - `atproto` pip package
